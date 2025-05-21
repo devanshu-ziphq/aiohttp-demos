@@ -19,8 +19,8 @@ PROJ_ROOT = pathlib.Path(__file__).parent.parent
 TEMPLATES_ROOT = pathlib.Path(__file__).parent / 'templates'
 
 
-async def setup_mongo(app, conf, loop):
-    mongo = await init_mongo(conf['mongo'], loop)
+async def setup_mongo(app, conf):
+    mongo = await init_mongo(conf['mongo'])
 
     async def close_mongo(app):
         mongo.client.close()
@@ -37,11 +37,11 @@ def setup_jinja(app):
     jinja_env.filters['robo_avatar_url'] = robo_avatar_url
 
 
-async def init(loop):
-    conf = load_config(PROJ_ROOT / 'config' / 'config.yml')
+async def init():
+    conf = load_config(PROJ_ROOT / 'config' / 'motortwit.yml')
 
-    app = web.Application(loop=loop)
-    mongo = await setup_mongo(app, conf, loop)
+    app = web.Application()
+    mongo = await setup_mongo(app, conf)
 
     setup_jinja(app)
     setup_security(app, CookiesIdentityPolicy(), AuthorizationPolicy(mongo))
@@ -56,16 +56,14 @@ async def init(loop):
 async def get_app():
     """Used by aiohttp-devtools for local development."""
     import aiohttp_debugtoolbar
-    app, _, _ = await init(asyncio.get_event_loop())
+    app, _, _ = await init()
     aiohttp_debugtoolbar.setup(app)
     return app
 
 
 def main():
     logging.basicConfig(level=logging.DEBUG)
-
-    loop = asyncio.get_event_loop()
-    app, host, port = loop.run_until_complete(init(loop))
+    app, host, port = asyncio.run(init())
     web.run_app(app, host=host, port=port)
 
 

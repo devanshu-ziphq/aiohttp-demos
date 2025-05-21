@@ -1,5 +1,10 @@
-mongo:
-    image: mongo:3.4
-    ports:
-        - 27017:27017
-    command: [--smallfiles]
+services:
+    mongo:
+        image: mongo:6.0
+        ports:
+            - 27017:27017
+        volumes:
+            - mongodb_data:/data/db
+
+volumes:
+    mongodb_data:

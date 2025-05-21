@@ -67,7 +67,7 @@ async def generate_followers(mongo, schema, rows, fake, user_ids):
     await insert_data(mongo, values)
 
 
-async def prepare_coolections(*collections):
+async def prepare_collections(*collections):
     for coll in collections:
         await coll.drop()
 
@@ -78,7 +78,7 @@ async def init(loop):
     fake = Factory.create()
     fake.seed(1234)
 
-    await prepare_coolections(mongo.user, mongo.message, mongo.follower)
+    await prepare_collections(mongo.user, mongo.message, mongo.follower)
 
     users = await generate_users(mongo.user, db.user, 100, fake)
     await generate_messages(mongo.message, db.message, 50, fake, users)

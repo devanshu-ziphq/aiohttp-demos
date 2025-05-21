@@ -117,7 +117,13 @@ class SiteHandler:
         if user_id:
             return redirect(request, 'timeline')
 
-        form = await request.post()
+        # Handle both JSON and form data
+        content_type = request.headers.get('Content-Type', '')
+        if 'application/json' in content_type:
+            form = await request.json()
+        else:
+            form = await request.post()
+
         error = await validate_register_form(self.mongo, form)
 
         if error is None:

@@ -1,33 +1,15 @@
-import trafaret as t
-from trafaret.contrib.object_id import MongoId
-from trafaret.contrib.rfc_3339 import DateTime
+from typing import Optional, List
+from pymongo import MongoClient
+from pymongo.database import Database
+from pymongo.collection import Collection
+from bson import ObjectId
+
+from .models import UserInDB, MessageInDB, PyObjectId
 
 
-user = t.Dict({
-    t.Key('_id'): MongoId(),
-    t.Key('username'): t.String(max_length=50),
-    t.Key('email'): t.Email,
-    t.Key('pw_hash'): t.String(),
-})
-
-
-message = t.Dict({
-    t.Key('_id'): MongoId(),
-    t.Key('author_id'): MongoId(),
-    t.Key('username'): t.String(max_length=50),
-    t.Key('text'): t.String(),
-    t.Key('pub_date'): DateTime(),
-})
-
-follower = t.Dict({
-    t.Key('_id'): MongoId(),
-    t.Key('who_id'): MongoId(),
-    t.Key('whom_id'): t.List(MongoId()),
-})
-
-
-async def get_user_id(user_collection, username):
-    rv = await (user_collection.find_one(
+async def get_user_id(user_collection: Collection, username: str) -> Optional[PyObjectId]:
+    rv = await user_collection.find_one(
         {'username': username},
-        {'_id': 1}))
-    return rv['_id'] if rv else None
+        {'_id': 1}
+    )
+    return PyObjectId(rv['_id']) if rv else None

@@ -1,32 +1,35 @@
 import os
 from hashlib import md5
 
-import motor.motor_asyncio as aiomotor
+import pymongo
+from pymongo import MongoClient
 import pytz
 import yaml
 from aiohttp import web
 from dateutil.parser import parse
+from pydantic import ValidationError
 
 from . import db
+from .models import UserCreate
 
 
 def load_config(fname):
     with open(fname, 'rt') as f:
-        data = yaml.load(f)
+        data = yaml.load(f, Loader=yaml.SafeLoader)
     # TODO: add config validation
     return data
 
 
-async def init_mongo(conf, loop):
+async def init_mongo(conf):
     host = os.environ.get('DOCKER_MACHINE_IP', '127.0.0.1')
     conf['host'] = host
     mongo_uri = "mongodb://{}:{}".format(conf['host'], conf['port'])
-    conn = aiomotor.AsyncIOMotorClient(
+    client = MongoClient(
         mongo_uri,
-        maxPoolSize=conf['max_pool_size'],
-        io_loop=loop)
+        maxPoolSize=conf['max_pool_size']
+    )
     db_name = conf['database']
-    return conn[db_name]
+    return client[db_name]
 
 
 def robo_avatar_url(user_data, size=80):
@@ -49,18 +52,18 @@ def redirect(request, name, **kw):
     return web.HTTPFound(location=location)
 
 
-async def validate_register_form(mongo, form):
-    error = None
-    user_id = await db.get_user_id(mongo.user, form['username'])
-
-    if not form['username']:
-        error = 'You have to enter a username'
-    elif not form['email'] or '@' not in form['email']:
-        error = 'You have to enter a valid email address'
-    elif not form['password']:
-        error = 'You have to enter a password'
-    elif form['password'] != form['password2']:
-        error = 'The two passwords do not match'
-    elif user_id is not None:
-        error = 'The username is already taken'
-    return error
+async def validate_register_form(mongo, form_data):
+    """Validate registration form data using Pydantic."""
+    try:
+        # Validate form data using Pydantic model
+        user_data = UserCreate(**form_data)
+        
+        # Check if username is already taken
+        user_id = await db.get_user_id(mongo.user, user_data.username)
+        if user_id is not None:
+            return 'The username is already taken'
+            
+        return None
+    except ValidationError as e:
+        # Return the first validation error message
+        return str(e.errors()[0]['msg'])
